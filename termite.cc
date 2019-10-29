@@ -240,6 +240,14 @@ static const std::map<int, const char *> modify_meta_table = {
     { GDK_KEY_question,   "\033[27;14;63~" },
 };
 
+static const int MY_MOVE_LEFT = GDK_KEY_h;
+static const int MY_MOVE_DOWN = GDK_KEY_n;
+static const int MY_MOVE_UPSY = GDK_KEY_e;
+static const int MY_MOVE_RIGH = GDK_KEY_i;
+static const int MY_SELECTION_MODE = GDK_KEY_o;
+static const int MY_SEARCH_NEXT = GDK_KEY_k;
+static const int MY_SEARCH_PREV = GDK_KEY_K;
+
 static gboolean modify_key_feed(GdkEventKey *event, keybind_info *info,
                                 const std::map<int, const char *>& table) {
     if (info->config.modify_other_keys) {
@@ -882,19 +890,19 @@ gboolean key_press_cb(VteTerminal *vte, GdkEventKey *event, keybind_info *info) 
                 info->panel.url_list.clear();
                 break;
             case GDK_KEY_Left:
-            case GDK_KEY_h:
+            case MY_MOVE_LEFT:
                 move(vte, &info->select, -1, 0);
                 break;
             case GDK_KEY_Down:
-            case GDK_KEY_j:
+            case MY_MOVE_DOWN:
                 move(vte, &info->select, 0, 1);
                 break;
             case GDK_KEY_Up:
-            case GDK_KEY_k:
+            case MY_MOVE_UPSY:
                 move(vte, &info->select, 0, -1);
                 break;
             case GDK_KEY_Right:
-            case GDK_KEY_l:
+            case MY_MOVE_RIGH:
                 move(vte, &info->select, 1, 0);
                 break;
             case GDK_KEY_b:
@@ -908,12 +916,6 @@ gboolean key_press_cb(VteTerminal *vte, GdkEventKey *event, keybind_info *info) 
                 break;
             case GDK_KEY_W:
                 move_forward_blank_word(vte, &info->select);
-                break;
-            case GDK_KEY_e:
-                move_forward_end_word(vte, &info->select);
-                break;
-            case GDK_KEY_E:
-                move_forward_end_blank_word(vte, &info->select);
                 break;
             case GDK_KEY_0:
             case GDK_KEY_Home:
@@ -961,11 +963,11 @@ gboolean key_press_cb(VteTerminal *vte, GdkEventKey *event, keybind_info *info) 
             case GDK_KEY_question:
                 overlay_show(&info->panel, overlay_mode::rsearch, vte);
                 break;
-            case GDK_KEY_n:
+            case MY_SEARCH_NEXT:
                 vte_terminal_search_find_next(vte);
                 vte_terminal_copy_primary(vte);
                 break;
-            case GDK_KEY_N:
+            case MY_SEARCH_PREV:
                 vte_terminal_search_find_previous(vte);
                 vte_terminal_copy_primary(vte);
                 break;
@@ -1000,36 +1002,6 @@ gboolean key_press_cb(VteTerminal *vte, GdkEventKey *event, keybind_info *info) 
             case GDK_KEY_equal:
                 reset_font_scale(vte, info->config.font_scale);
                 return TRUE;
-            case GDK_KEY_t:
-                launch_in_directory(vte);
-                return TRUE;
-            case GDK_KEY_space:
-            case GDK_KEY_nobreakspace: // shift-space on some keyboard layouts
-                enter_command_mode(vte, &info->select);
-                return TRUE;
-            case GDK_KEY_x:
-                enter_command_mode(vte, &info->select);
-                find_urls(vte, &info->panel);
-                gtk_widget_show(info->panel.da);
-                overlay_show(&info->panel, overlay_mode::urlselect, nullptr);
-                exit_command_mode(vte, &info->select);
-                return TRUE;
-            case GDK_KEY_c:
-#if VTE_CHECK_VERSION(0, 50, 0)
-                vte_terminal_copy_clipboard_format(vte, VTE_FORMAT_TEXT);
-#else
-                vte_terminal_copy_clipboard(vte);
-#endif
-                return TRUE;
-            case GDK_KEY_v:
-                vte_terminal_paste_clipboard(vte);
-                return TRUE;
-            case GDK_KEY_r:
-                reload_config();
-                return TRUE;
-            case GDK_KEY_l:
-                vte_terminal_reset(vte, TRUE, TRUE);
-                return TRUE;
             default:
                 if (modify_key_feed(event, info, modify_table))
                     return TRUE;
@@ -1038,8 +1010,23 @@ gboolean key_press_cb(VteTerminal *vte, GdkEventKey *event, keybind_info *info) 
                (modifiers == (GDK_CONTROL_MASK|GDK_MOD1_MASK|GDK_SHIFT_MASK))) {
         if (modify_key_feed(event, info, modify_meta_table))
             return TRUE;
-    } else if (modifiers == GDK_CONTROL_MASK) {
+    // } else if (modifiers == GDK_CONTROL_MASK) {
+    } else if (modifiers == GDK_esc_MASK) {
         switch (gdk_keyval_to_lower(event->keyval)) {
+        case GDK_KEY_x:
+          enter_command_mode(vte, &info->select);
+          find_urls(vte, &info->panel);
+          gtk_widget_show(info->panel.da);
+          overlay_show(&info->panel, overlay_mode::urlselect, nullptr);
+          exit_command_mode(vte, &info->select);
+          return TRUE;
+        case GDK_KEY_v:
+          vte_terminal_paste_clipboard(vte);
+          return TRUE;
+        case MY_SELECTION_MODE:
+        case GDK_KEY_nobreakspace: // shift-space on some keyboard layouts
+          enter_command_mode(vte, &info->select);
+          return TRUE;
             case GDK_KEY_Tab:
                 overlay_show(&info->panel, overlay_mode::completion, vte);
                 return TRUE;
@@ -1054,6 +1041,15 @@ gboolean key_press_cb(VteTerminal *vte, GdkEventKey *event, keybind_info *info) 
             case GDK_KEY_equal:
                 reset_font_scale(vte, info->config.font_scale);
                 return TRUE;
+        case GDK_KEY_r:
+          reload_config();
+          return TRUE;
+        case GDK_KEY_l:
+          vte_terminal_reset(vte, TRUE, TRUE);
+          return TRUE;
+        case GDK_KEY_t:
+          launch_in_directory(vte);
+          return TRUE;
             default:
                 if (modify_key_feed(event, info, modify_table))
                     return TRUE;
